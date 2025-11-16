@@ -25,7 +25,7 @@ import torchvision
 DISTANCE_CONFIG = {
     "pink_object": {"width_cm": 3.0},  # 粉色物块真实宽度（cm）
     "blue_object": {"width_cm": 3.0},  # 蓝色物块真实宽度（cm）
-    "yellow_object": {"width_cm": 3.0}  # 黄色物块真实宽度（cm）
+    "yellow_object": {"width_cm": 3.0},  # 黄色物块真实宽度（cm）
 }
 FOCAL_LENGTH = 1200  # 焦距（像素）
 
@@ -40,7 +40,14 @@ def calculate_distance(w, object_type="pink_cube"):
         return None
 
 
-def letterbox(img, new_shape=(640, 640), color=(114, 114, 114), auto=False, scaleFill=False, scaleup=True):
+def letterbox(
+    img,
+    new_shape=(640, 640),
+    color=(114, 114, 114),
+    auto=False,
+    scaleFill=False,
+    scaleup=True,
+):
     # Resize image to a 32-pixel-multiple rectangle https://github.com/ultralytics/yolov3/issues/232
     shape = img.shape[:2]  # current shape [height, width]
     if isinstance(new_shape, int):
@@ -69,20 +76,22 @@ def letterbox(img, new_shape=(640, 640), color=(114, 114, 114), auto=False, scal
         img = cv2.resize(img, new_unpad, interpolation=cv2.INTER_LINEAR)
     top, bottom = int(round(dh - 0.1)), int(round(dh + 0.1))
     left, right = int(round(dw - 0.1)), int(round(dw + 0.1))
-    img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)  # add border
+    img = cv2.copyMakeBorder(
+        img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color
+    )  # add border
     return img, ratio, (dw, dh)
 
 
 def non_max_suppression(
-        prediction,
-        conf_thres=0.25,
-        iou_thres=0.45,
-        classes=None,
-        agnostic=False,
-        multi_label=False,
-        labels=(),
-        max_det=300,
-        nm=0,  # number of masks
+    prediction,
+    conf_thres=0.25,
+    iou_thres=0.45,
+    classes=None,
+    agnostic=False,
+    multi_label=False,
+    labels=(),
+    max_det=300,
+    nm=0,  # number of masks
 ):
     """Non-Maximum Suppression (NMS) on inference results to reject overlapping detections
 
@@ -90,11 +99,13 @@ def non_max_suppression(
          list of detections, on (n,6) tensor per image [xyxy, conf, cls]
     """
 
-    if isinstance(prediction, (list, tuple)):  # YOLOv5 model in validation model, output = (inference_out, loss_out)
+    if isinstance(
+        prediction, (list, tuple)
+    ):  # YOLOv5 model in validation model, output = (inference_out, loss_out)
         prediction = prediction[0]  # select only inference output
 
     device = prediction.device
-    mps = 'mps' in device.type  # Apple MPS
+    mps = "mps" in device.type  # Apple MPS
     if mps:  # MPS not fully supported yet, convert tensors to CPU before NMS
         prediction = prediction.cpu()
     bs = prediction.shape[0]  # batch size
@@ -102,8 +113,12 @@ def non_max_suppression(
     xc = prediction[..., 4] > conf_thres  # candidates
 
     # Checks
-    assert 0 <= conf_thres <= 1, f'Invalid Confidence threshold {conf_thres}, valid values are between 0.0 and 1.0'
-    assert 0 <= iou_thres <= 1, f'Invalid IoU {iou_thres}, valid values are between 0.0 and 1.0'
+    assert 0 <= conf_thres <= 1, (
+        f"Invalid Confidence threshold {conf_thres}, valid values are between 0.0 and 1.0"
+    )
+    assert 0 <= iou_thres <= 1, (
+        f"Invalid IoU {iou_thres}, valid values are between 0.0 and 1.0"
+    )
 
     # Settings
     # min_wh = 2  # (pixels) minimum box width and height
@@ -137,7 +152,9 @@ def non_max_suppression(
         x[:, 5:] *= x[:, 4:5]  # conf = obj_conf * cls_conf
 
         # Box/Mask
-        box = xywh2xyxy(x[:, :4])  # center_x, center_y, width, height) to (x1, y1, x2, y2)
+        box = xywh2xyxy(
+            x[:, :4]
+        )  # center_x, center_y, width, height) to (x1, y1, x2, y2)
         mask = x[:, mi:]  # zero columns if no masks
 
         # Detections matrix nx6 (xyxy, conf, cls)
@@ -172,7 +189,7 @@ def non_max_suppression(
         if mps:
             output[xi] = output[xi].to(device)
         if (time.time() - t) > time_limit:
-            print(f'WARNING ⚠️ NMS time limit {time_limit:.3f}s exceeded')
+            print(f"WARNING ⚠️ NMS time limit {time_limit:.3f}s exceeded")
             break  # time limit exceeded
 
     return output
@@ -199,8 +216,13 @@ def get_labels_from_txt(path):
 def scale_coords(img1_shape, coords, img0_shape, ratio_pad=None):
     # Rescale coords (xyxy) from img1_shape to img0_shape
     if ratio_pad is None:  # calculate from img0_shape
-        gain = min(img1_shape[0] / img0_shape[0], img1_shape[1] / img0_shape[1])  # gain  = old / new
-        pad = (img1_shape[1] - img0_shape[1] * gain) / 2, (img1_shape[0] - img0_shape[0] * gain) / 2  # wh padding
+        gain = min(
+            img1_shape[0] / img0_shape[0], img1_shape[1] / img0_shape[1]
+        )  # gain  = old / new
+        pad = (
+            (img1_shape[1] - img0_shape[1] * gain) / 2,
+            (img1_shape[0] - img0_shape[0] * gain) / 2,
+        )  # wh padding
     else:
         gain = ratio_pad[0][0]
         pad = ratio_pad[1]
@@ -226,19 +248,52 @@ def clip_coords(boxes, shape):
 
 def nms(box_out, conf_thres=0.4, iou_thres=0.5):
     try:
-        boxout = non_max_suppression(box_out, conf_thres=conf_thres, iou_thres=iou_thres, multi_label=True)
-    except:
-        boxout = non_max_suppression(box_out, conf_thres=conf_thres, iou_thres=iou_thres)
+        boxout = non_max_suppression(
+            box_out, conf_thres=conf_thres, iou_thres=iou_thres, multi_label=True
+        )
+    except Exception:
+        boxout = non_max_suppression(
+            box_out, conf_thres=conf_thres, iou_thres=iou_thres
+        )
     return boxout
 
 
 def draw_bbox(bbox, img0, color, wt, names):
-    det_result_str = ''
+    det_result_str = ""
     for idx, class_id in enumerate(bbox[:, 5]):
         if float(bbox[idx][4] < float(0.05)):
             continue
-        img0 = cv2.rectangle(img0, (int(bbox[idx][0]), int(bbox[idx][1])), (int(bbox[idx][2]), int(bbox[idx][3])), color, wt)
-        img0 = cv2.putText(img0, str(idx) + ' ' + names[int(class_id)], (int(bbox[idx][0]), int(bbox[idx][1] + 16)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
-        img0 = cv2.putText(img0, '{:.4f}'.format(bbox[idx][4]), (int(bbox[idx][0]), int(bbox[idx][1] + 32)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
-        det_result_str += '{} {} {} {} {} {}\n'.format(names[bbox[idx][5]], str(bbox[idx][4]), bbox[idx][0], bbox[idx][1], bbox[idx][2], bbox[idx][3])
+        img0 = cv2.rectangle(
+            img0,
+            (int(bbox[idx][0]), int(bbox[idx][1])),
+            (int(bbox[idx][2]), int(bbox[idx][3])),
+            color,
+            wt,
+        )
+        img0 = cv2.putText(
+            img0,
+            str(idx) + " " + names[int(class_id)],
+            (int(bbox[idx][0]), int(bbox[idx][1] + 16)),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            (0, 0, 255),
+            1,
+        )
+        img0 = cv2.putText(
+            img0,
+            "{:.4f}".format(bbox[idx][4]),
+            (int(bbox[idx][0]), int(bbox[idx][1] + 32)),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            (0, 0, 255),
+            1,
+        )
+        det_result_str += "{} {} {} {} {} {}\n".format(
+            names[bbox[idx][5]],
+            str(bbox[idx][4]),
+            bbox[idx][0],
+            bbox[idx][1],
+            bbox[idx][2],
+            bbox[idx][3],
+        )
     return img0
