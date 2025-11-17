@@ -144,6 +144,16 @@ https://github.com/user-attachments/assets/99078d1e-29b3-49ad-b53b-35ddc5722a28
 
 </div>
 
+**yellow cube forward & pink cube tracker with WIFI:**
+
+<div align='center'>
+
+https://github.com/user-attachments/assets/9c68b9a1-a283-4bdb-bf96-f80b8fd49d62
+
+https://github.com/user-attachments/assets/d06295fd-95a5-4e5e-a0e8-60d22bf33612
+
+</div>
+
 ## 🤝 贡献指南
 
 欢迎为本项目贡献代码！请遵循以下步骤：
