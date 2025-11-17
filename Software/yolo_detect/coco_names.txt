@@ -1,0 +1,3 @@
+blue_cube
+pink_cube
+yellow_cube
